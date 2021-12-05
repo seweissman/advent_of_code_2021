@@ -89,9 +89,13 @@ SAMPLE_DEPTHS = [
     260,
     263]
 
-def test_count_increases():
+def test_part1():
     sample_increases = count_increases_slide(SAMPLE_DEPTHS)
     assert(sample_increases == 7)
+
+def test_part2():
+    sample_increases = count_increases_slide(SAMPLE_DEPTHS, window_len=3)
+    assert(sample_increases == 5)
 
 def count_increases_slide(depths, window_len=1):
     increase_ct = 0
@@ -106,10 +110,6 @@ def count_increases_slide(depths, window_len=1):
                 increase_ct += 1
         curr_average = new_average
     return increase_ct
-
-def test_count_increases_slide():
-    sample_increases = count_increases_slide(SAMPLE_DEPTHS, window_len=3)
-    assert(sample_increases == 5)
 
 if __name__ == "__main__":
     with open("input.txt") as file:
