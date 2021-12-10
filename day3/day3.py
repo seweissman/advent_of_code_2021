@@ -80,6 +80,7 @@ SAMPLE_REPORT=[
     "01010",
 ]
 
+
 def b2i(bit_array):
     return sum(b*1<<i for i,b in enumerate(bit_array[::-1]))
 
