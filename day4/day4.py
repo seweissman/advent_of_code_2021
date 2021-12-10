@@ -134,6 +134,10 @@ def check_board(board):
     return False
         
 def score_board(winning_number, board):
+    """
+    Score unmarked squares on the board. The score is the sum of the unmarked squares times
+    the winning number
+    """
     unmarked_sum = 0
     for col in range(5):
         for row in range(5):
