@@ -368,11 +368,14 @@ def read_input(input_lines):
 
 def get_adjacent_points(a, p):
     """
-    Get the list of adjacent points to point p in array a. Returns a list of (i,j)
+    Get the list of adjacent points (including diagonals) to point p in array a. Returns a list of (i,j)
     points
     """
     i, j = p
+    # Start with all the points
     adjacent_points = [(i-1, j-1), (i-1,j), (i-1,j+1), (i,j-1), (i,j+1), (i+1, j-1), (i+1,j), (i+1,j+1)]
+
+    # Throw away points that are out of bounds
     adjacent_points = [(i,j) for (i,j) in adjacent_points if i >= 0 and j >= 0 and i < a.shape[0] and j < a.shape[1]]
     return adjacent_points
 
