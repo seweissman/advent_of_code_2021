@@ -74,29 +74,62 @@ SAMPLE_INPUT = \
 
 def test_part1():
     input_lines = [line.strip() for line in SAMPLE_INPUT.split("\n") if line.strip()]
-    a = read_input(input_lines)
-    low_points = find_low_points(a)
-    low_vals = [a[p] for p in low_points]
+    height_array = read_input(input_lines)
+    low_points = find_low_points(height_array)
+    low_vals = [height_array[p] for p in low_points]
     assert low_vals == [1, 0, 5, 5]
     risk_level = sum([v + 1 for v in low_vals])
     assert risk_level == 15
 
-def find_low_points(a):
+def test_part2():
+    input_lines = [line.strip() for line in SAMPLE_INPUT.split("\n") if line.strip()]
+    height_array = read_input(input_lines)
+    low_points = find_low_points(height_array)
+    basins = [find_basin(p, height_array) for p in low_points]
+    basin_sizes = [len(basin) for basin in basins]
+    top3 = sorted(basin_sizes)[-3:]
+    assert top3 == [9,9,14]
+    assert np.prod(top3) == 1134
+
+def get_adjacent_points(a, p):
+    i, j = p
+    adjacent_points = []
+    if i > 0:
+        adjacent_points.append((i-1,j))
+    if i < a.shape[0] - 1:
+        adjacent_points.append((i+1,j))
+    if j > 0:
+        adjacent_points.append((i,j-1))
+    if j < a.shape[1] - 1:
+        adjacent_points.append((i,j+1))
+    return adjacent_points
+
+def find_low_points(height_array):
     low_points = []
-    for i in range(a.shape[0]):
-        for j in range(a.shape[1]):
-            surrounding_vals = []
-            if i > 0:
-                surrounding_vals.append(a[i-1][j])
-            if i < a.shape[0] - 1:
-                surrounding_vals.append(a[i+1][j])
-            if j > 0:
-                surrounding_vals.append(a[i][j-1])
-            if j < a.shape[1] - 1:
-                surrounding_vals.append(a[i][j+1])
-            if all([v > a[i][j] for v in surrounding_vals]):
+    for i in range(height_array.shape[0]):
+        for j in range(height_array.shape[1]):
+            adjacent_points = get_adjacent_points(height_array, (i,j))
+            surrounding_vals = [height_array[p] for p in adjacent_points]
+            if all([v > height_array[i][j] for v in surrounding_vals]):
                 low_points.append((i,j))
     return low_points
+
+def find_basin(p, height_array):
+    basin_points = {p}
+    while True:
+        new_basin_points = set()
+        for basin_point in basin_points:
+            adjacent_points = get_adjacent_points(height_array, basin_point)
+            for adjacent_point in adjacent_points:
+                if (adjacent_point not in basin_points 
+                        and height_array[adjacent_point] > height_array[basin_point]
+                        and height_array[adjacent_point] != 9):
+                    new_basin_points.add(adjacent_point)
+        if not new_basin_points:
+            break
+        basin_points = basin_points.union(new_basin_points)
+    return basin_points
+        
 
 def read_input(input_lines):
     a = np.array([[int(d) for d in line] for line in input_lines])
@@ -106,8 +139,13 @@ def read_input(input_lines):
 if __name__ == "__main__":
     with open("input.txt") as file:
         input_lines = [line.strip() for line in file.readlines() if line.strip()]
-    a = read_input(input_lines)
-    low_points = find_low_points(a)
-    low_vals = [a[p] for p in low_points]
+    height_array = read_input(input_lines)
+    low_points = find_low_points(height_array)
+    low_vals = [height_array[p] for p in low_points]
     risk_level = sum([v + 1 for v in low_vals])
     print("Part1:", risk_level)
+
+    basins = [find_basin(p, height_array) for p in low_points]
+    basin_sizes = [len(basin) for basin in basins]
+    top3 = sorted(basin_sizes)[-3:]
+    print("Part2:", np.prod(top3))
