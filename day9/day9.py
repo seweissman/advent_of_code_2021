@@ -92,6 +92,10 @@ def test_part2():
     assert np.prod(top3) == 1134
 
 def get_adjacent_points(a, p):
+    """
+    Get the list of adjacent points to point p in array a. Returns a list of (i,j)
+    points
+    """
     i, j = p
     adjacent_points = []
     if i > 0:
@@ -105,6 +109,7 @@ def get_adjacent_points(a, p):
     return adjacent_points
 
 def find_low_points(height_array):
+    """Find the low points in the given height array. Returns a list of (i,j) points"""
     low_points = []
     for i in range(height_array.shape[0]):
         for j in range(height_array.shape[1]):
@@ -115,6 +120,7 @@ def find_low_points(height_array):
     return low_points
 
 def find_basin(p, height_array):
+    """Find the basin around point p. Returns a set of (i,j) points"""
     basin_points = {p}
     while True:
         new_basin_points = set()
