@@ -139,6 +139,7 @@ def find_completion(input):
         else:
             last_paren = paren_stack.pop()
             # If the current paren isn't a match for the last paren then we have an error
+            # (I guess we could actually raise an error here but that means we can't use list comprehensions)
             if PAREN_MATCH[last_paren] != paren:
                 return None, paren
 
