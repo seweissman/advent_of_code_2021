@@ -79,59 +79,73 @@ CC -> N
 CN -> C
 """
 
-def read_input(input_raw):
-    input_lines = [line.strip() for line in input_raw.splitlines() if line.strip()]
-    polymer_template = input_lines[0]
-    insertion_rules = [l.split(" -> ") for l in input_lines[1:]]
-    insertion_rules = {x: y for (x,y) in insertion_rules}
-    return polymer_template, insertion_rules
+class Polymer:
 
-def get_pairs(polymer):
-    return ["".join(polymer[i:i+2]) for i in range(len(polymer) - 1)]
+    def __init__(self, polymer_template, insertion_rules) -> None:
+        self.insertion_rules = insertion_rules
+        self.pair_cts = defaultdict(int)
+        self.first_element = polymer_template[0]
+        self.last_element = polymer_template[-1]
+        all_pairs = ["".join(polymer_template[i:i+2]) for i in range(len(polymer_template) - 1)]
+        for pair in all_pairs:
+            self.pair_cts[pair] += 1
 
-def apply_rules(pair, insertion_rules):
-    if pair in insertion_rules:
-        return pair[0] + insertion_rules[pair]
-    return pair[0]
+    def grow(self):
+        new_pair_cts = defaultdict(int)
+        for pair in self.pair_cts:
+            if pair in self.pair_cts:
+                new_pair_cts[pair[0] + self.insertion_rules[pair]] += self.pair_cts[pair]
+                new_pair_cts[self.insertion_rules[pair] + pair[1]] += self.pair_cts[pair]
+            else:
+                new_pair_cts[pair] = self.pair_cts[pair]
+        self.pair_cts = new_pair_cts
 
-def grow_polymer(polymer, insertion_rules):
-    polymer_pairs = get_pairs(polymer)
-    return "".join([apply_rules(pair, insertion_rules) for pair in polymer_pairs]) + polymer[-1]
+    def score(self):
+        element_cts = defaultdict(int)
+        for pair in self.pair_cts:
+            element_cts[pair[0]] += self.pair_cts[pair]
+            element_cts[pair[1]] += self.pair_cts[pair]
+        # Account for double counting of all but first and last element of polymer string
+        element_cts[self.first_element] += 1
+        element_cts[self.last_element] += 1
+        for element in element_cts:
+            element_cts[element] //= 2
 
-def test_pairs():
-    polymer_template, _ = read_input(SAMPLE_INPUT)
-    assert get_pairs(polymer_template) == ["NN", "NC", "CB"]
+        # Find the most common and least common element and subtract counts for score
+        elements = sorted([(v,k) for (k,v) in element_cts.items()])
+        most_common_minus_least = elements[-1][0] - elements[0][0]
+        return most_common_minus_least
 
-def score_polymer(polymer):
-    element_cts = defaultdict(int)
-    for e in polymer:
-        element_cts[e] += 1
-    elements = sorted([(v,k) for (k,v) in element_cts.items()])
-    most_common_minus_least = elements[-1][0] - elements[0][0]
-    return most_common_minus_least
-
+    @staticmethod
+    def from_input(input_raw):
+        input_lines = [line.strip() for line in input_raw.splitlines() if line.strip()]
+        polymer_template = input_lines[0]
+        insertion_rules = [l.split(" -> ") for l in input_lines[1:]]
+        insertion_rules = {x: y for (x,y) in insertion_rules}
+        polymer = Polymer(polymer_template, insertion_rules)
+        return polymer
 
 def test_sample():
-    polymer_template, insertion_rules = read_input(SAMPLE_INPUT)
-    polymer = grow_polymer(polymer_template, insertion_rules)
-    assert polymer == "NCNBCHB"
-    polymer = grow_polymer(polymer, insertion_rules)
-    assert polymer == "NBCCNBBBCBHCB"
-    polymer = grow_polymer(polymer, insertion_rules)
-    assert polymer == "NBBBCNCCNBBNBNBBCHBHHBCHB"
-    polymer = grow_polymer(polymer, insertion_rules)
-    assert polymer == "NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB"
-    polymer = grow_polymer(polymer, insertion_rules)
-    assert len(polymer) == 97
-    for i in range(5):
-        polymer = grow_polymer(polymer, insertion_rules)
-    assert len(polymer) == 3073
-    assert score_polymer(polymer) == 1588
+    polymer = Polymer.from_input(SAMPLE_INPUT)
+    for i in range(10):
+        polymer.grow()
+    assert polymer.score() == 1588
+
+def test_sample_part2():
+    polymer = Polymer.from_input(SAMPLE_INPUT)
+    for i in range(40):
+        polymer.grow()
+    assert polymer.score() == 2188189693529
+
 
 if __name__ == "__main__":
     with open("./input.txt") as file:
-        polymer_template, insertion_rules = read_input(file.read())
-    polymer = polymer_template
+        polymer = Polymer.from_input(file.read())
     for i in range(10):
-        polymer = grow_polymer(polymer, insertion_rules)
-    print("Part 1:", score_polymer(polymer))
+        polymer.grow()
+    print("Part 1:", polymer.score())
+
+    for i in range(30):
+        polymer.grow()
+    print("Part 2:", polymer.score())
+
