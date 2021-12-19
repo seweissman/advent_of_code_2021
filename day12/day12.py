@@ -110,6 +110,7 @@ def test_small():
     input_lines = [line for line in SAMPLE_INPUT_SMALL.splitlines() if line]
     graph = build_graph(input_lines)
     assert count_paths(graph, "start") == 10
+    assert count_paths_part2(graph, "start") == 36
 
 SAMPLE_INPUT_MEDIUM = \
 """
@@ -129,6 +130,7 @@ def test_medium():
     input_lines = [line for line in SAMPLE_INPUT_MEDIUM.splitlines() if line]
     graph = build_graph(input_lines)
     assert count_paths(graph, "start") == 19
+    assert count_paths_part2(graph, "start") == 103
 
 SAMPLE_INPUT_LARGE = \
 """
@@ -156,6 +158,7 @@ def test_large():
     input_lines = [line for line in SAMPLE_INPUT_LARGE.splitlines() if line]
     graph = build_graph(input_lines)
     assert count_paths(graph, "start") == 226
+    assert count_paths_part2(graph, "start") == 3509
 
 def is_lowercase(x):
     return x.lower() == x
@@ -183,9 +186,27 @@ def count_paths(graph, start, visited=None):
             path_ct += ct
     return path_ct
 
+def count_paths_part2(graph, start, visit_count=None):
+    if not visit_count:
+        visit_count = defaultdict(int)
+    if is_lowercase(start):
+        visit_count[start] += 1
+    if start == "end":
+        return 1
+    path_ct = 0
+    for adj_node in graph[start]:
+        if (not is_lowercase(adj_node) 
+            or (is_lowercase(adj_node) and not adj_node in visit_count)
+            or (is_lowercase(adj_node) and 2 not in visit_count.values())):
+            ct = count_paths_part2(graph, adj_node, visit_count.copy())
+            path_ct += ct
+    return path_ct
+
+
 if __name__ == "__main__":
     with open("input.txt") as file:
         input_lines = file.read().splitlines()
     graph = build_graph(input_lines)
     print(graph)
     print("Part1:", count_paths(graph, "start"))
+    print("Part2:", count_paths_part2(graph, "start"))
