@@ -94,6 +94,7 @@ Using the full map, what is the lowest total risk of any path from the top left 
 from os import read
 import numpy as np
 from collections import defaultdict
+from functools import lru_cache
 
 SAMPLE_INPUT = """
 1163751742
@@ -108,6 +109,58 @@ SAMPLE_INPUT = """
 2311944581
 """
 
+SAMPLE_INPUT_2 = """
+1199999999
+9119999999
+9911999999
+9991199999
+9999199999
+9999199999
+9991199999
+9991999999
+9991111999
+9999991111
+"""
+
+SAMPLE_INPUT_3 = """
+1999999999
+1999999999
+1911199999
+1119199999
+9999199999
+9999199999
+9991199999
+9991999999
+9991111999
+9999991111
+"""
+
+
+
+class RiskMap:
+
+    def __init__(self, risks, nrows, ncols):
+        self.risks = risks
+        self.nrows = nrows
+        self.ncols = ncols
+    
+    def risk(self, i, j):
+        row = i % self.nrows
+        col = j % self.ncols
+        cell_row = i//self.nrows
+        cell_col = j//self.ncols
+        r = self.risks[(row,col)] + cell_row + cell_col
+        if r <= 9:
+            return r
+        return (r % 9)
+
+    def print_map(self, nrows, ncols):
+        for row in range(nrows):
+            line = ""
+            for col in range(ncols):
+                line += str(self.risk(row, col))
+            print(line)
+
 
 def read_input(input_raw):
     input_lines = [line for line in input_raw.splitlines() if line]
@@ -120,31 +173,71 @@ def read_input(input_raw):
 
     nrows = len(input_lines)
     ncols = len(input_lines[0])
+    risks = RiskMap(risks, nrows, ncols)
     return risks, nrows, ncols
-    
 
 def find_shortest_path(risks, nrows, ncols):
     shortest_path = defaultdict(lambda: 1000000000000)
-    for row in range(nrows):
-        for col in range(ncols):
-            if row == 0 and col == 0:
-                shortest_path[(row, col)] = 0
-            else:
-                shortest_path[(row, col)] = min(shortest_path[(row-1, col)], shortest_path[(row, col-1)]) + risks[(row, col)]
+    shortest_path[(0,0)] = 0
 
+    new_shortest_path = shortest_path.copy()
+    # Iterate until the map doesn't change. This seems pretty slow and I'm guessing there is a better
+    # solution.
+    while True:
+        diff_ct = 0
+        for row in range(nrows):
+            for col in range(ncols):
+                if row == 0 and col == 0:
+                    new_shortest_path[(row, col)] = 0
+                else:
+                    new_shortest_path[(row, col)] = min(shortest_path[(row-1, col)], 
+                                                    shortest_path[(row, col-1)],
+                                                    shortest_path[(row, col+1)],
+                                                    shortest_path[(row+1, col)]) + risks.risk(row, col)
+                    if new_shortest_path[(row,col)] != shortest_path[(row, col)]:
+                        diff_ct += 1
+        if diff_ct == 0:
+            break
+        print("Diff ct: ", diff_ct)
+        shortest_path = new_shortest_path.copy()
 
     return shortest_path[(nrows-1, ncols-1)]
 
-
-def test_sample():
+def test_sample1():
     risks, nrows, ncols = read_input(SAMPLE_INPUT)
     shortest_path = find_shortest_path(risks, nrows, ncols)
+    # risks.print_map(nrows, ncols)
     assert shortest_path == 40
+
+def test_sample2():
+    risks, nrows, ncols = read_input(SAMPLE_INPUT_2)
+    # risks.print_map(nrows, ncols)
+    shortest_path = find_shortest_path(risks, nrows, ncols)
+    assert shortest_path == 20
+
+def test_sample3():
+    risks, nrows, ncols = read_input(SAMPLE_INPUT_3)
+    # risks.print_map(nrows, ncols)
+    shortest_path = find_shortest_path(risks, nrows, ncols)
+    assert shortest_path == 22
+
+
+def test_sample_part2():
+    risks, nrows, ncols = read_input(SAMPLE_INPUT)
+    shortest_path = find_shortest_path(risks, nrows*5, ncols*5)
+    # risks.print_map(nrows*5, ncols*5)
+    assert shortest_path == 315
+
 
 if __name__ == "__main__":
     with open("input.txt") as file:
         risks, nrows, ncols = read_input(file.read())
     
+    # risks.print_map(nrows*5, ncols*5)
+
     shortest_path = find_shortest_path(risks, nrows, ncols)
     print("Part 1:", shortest_path)
+
+    shortest_path = find_shortest_path(risks, nrows*5, ncols*5)
+    print("Part 2:", shortest_path)
     
