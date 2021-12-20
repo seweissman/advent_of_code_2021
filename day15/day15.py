@@ -135,8 +135,6 @@ SAMPLE_INPUT_3 = """
 9999991111
 """
 
-
-
 class RiskMap:
 
     def __init__(self, risks, nrows, ncols):
@@ -176,24 +174,36 @@ def read_input(input_raw):
     risks = RiskMap(risks, nrows, ncols)
     return risks, nrows, ncols
 
+def print_shortest(shortest_paths, nrows, ncols):
+    for row in range(nrows):
+        line = ""
+        for col in range(ncols):
+            if shortest_paths[(row, col)] >= MAX_VAL:
+               line +=  ". "
+            else:
+                line += str(shortest_paths[(row, col)]) + " "
+        print(line)
+
+MAX_VAL = 1000000000000
 def find_shortest_path(risks, nrows, ncols):
-    shortest_path = defaultdict(lambda: 1000000000000)
+    shortest_path = defaultdict(lambda: MAX_VAL)
     shortest_path[(0,0)] = 0
 
     new_shortest_path = shortest_path.copy()
     # Iterate until the map doesn't change. This seems pretty slow and I'm guessing there is a better
     # solution.
     while True:
+        # print_shortest(shortest_path, nrows, ncols)
         diff_ct = 0
         for row in range(nrows):
             for col in range(ncols):
                 if row == 0 and col == 0:
                     new_shortest_path[(row, col)] = 0
                 else:
-                    new_shortest_path[(row, col)] = min(shortest_path[(row-1, col)], 
-                                                    shortest_path[(row, col-1)],
-                                                    shortest_path[(row, col+1)],
-                                                    shortest_path[(row+1, col)]) + risks.risk(row, col)
+                    new_shortest_path[(row, col)] = min(new_shortest_path[(row-1, col)], 
+                                                    new_shortest_path[(row, col-1)],
+                                                    new_shortest_path[(row, col+1)],
+                                                    new_shortest_path[(row+1, col)]) + risks.risk(row, col)
                     if new_shortest_path[(row,col)] != shortest_path[(row, col)]:
                         diff_ct += 1
         if diff_ct == 0:
@@ -202,6 +212,8 @@ def find_shortest_path(risks, nrows, ncols):
         shortest_path = new_shortest_path.copy()
 
     return shortest_path[(nrows-1, ncols-1)]
+
+import json    
 
 def test_sample1():
     risks, nrows, ncols = read_input(SAMPLE_INPUT)
