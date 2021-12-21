@@ -109,6 +109,8 @@ F600BC2D8F produces 0, because 5 is not greater than 15.
 9C0141080250320F1802104A08 produces 1, because 1 + 3 = 2 * 2.
 """
 
+import math
+
 def hex_to_binary(hex_string):
     """Return binary string representation of hex input"""
     binary_string = ""
@@ -132,71 +134,119 @@ def parse_literal(packet_body):
         if prefix == "0":
             return int(binary_value_str, base=2), packet_body[i+5:]            
 
-def parse_operator(packet_body):
+operator_map = {
+    0 : sum,
+    1 : math.prod,
+    2 : min,
+    3 : max,
+    5 : lambda l: 1 if l[0] > l[1] else 0,
+    6 : lambda l: 1 if l[0] < l[1] else 0,
+    7 : lambda l: 1 if l[0] == l[1] else 0
+}
+
+def parse_operator(type, packet_body):
+    op = operator_map[int(type, base=2)]
     length_type_id = packet_body[0]
     if length_type_id == "0":
         total_length = int(packet_body[1:16], base=2)
         subpackets = packet_body[16:16+total_length]
         version_sum = 0
+        values = []
         while subpackets:
-            version, subpackets = parse_packet(subpackets)
+            version, value, subpackets = parse_packet(subpackets)
+            values.append(value)
             version_sum += version
-        return version_sum, packet_body[16+total_length:]
+        return version_sum, op(values), packet_body[16+total_length:]
     else:
         n_subpackets = int(packet_body[1:12], base=2)
         subpackets = packet_body[12:]
         version_sum = 0
+        values = []
         for i in range(n_subpackets):
-            version, subpackets = parse_packet(subpackets)
+            version, value, subpackets = parse_packet(subpackets)
+            values.append(value)
             version_sum += version
-        return version_sum, subpackets
+        return version_sum, op(values), subpackets
 
 def parse_packet(packet):
     version = int(packet[0:3], base=2)
     type = packet[3:6]
     if type == "100":  # literal packet
         literal, rest = parse_literal(packet[6:])
-        return version, rest
+        return version, literal, rest
     else:  # operator packet
-        version_sub, rest = parse_operator(packet[6:])
-        return version_sub + version, rest
+        version_sub, value, rest = parse_operator(type, packet[6:])
+        return version_sub + version, value, rest
 
 def test_parse_packet():
     packet = hex_to_binary("D2FE28")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 6
     assert rest == "000"
 
     packet = hex_to_binary("38006F45291200")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 9
     assert rest == "0000000"
 
     packet = hex_to_binary("EE00D40C823060")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 7 + 2 + 4 + 1
     assert rest == "00000"
 
     packet = hex_to_binary("8A004A801A8002F478")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 16
 
     packet = hex_to_binary("620080001611562C8802118E34")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 12
 
     packet = hex_to_binary("C0015000016115A2E0802F182340")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 23
 
     packet = hex_to_binary("A0016C880162017C3686B18A3D4780")
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     assert version_sum == 31
+
+    packet = hex_to_binary("C200B40A82")
+    _, value, rest = parse_packet(packet)
+    assert value == 3
+
+    packet = hex_to_binary("04005AC33890")
+    _, value, rest = parse_packet(packet)
+    assert value == 54
+
+    packet = hex_to_binary("880086C3E88112")
+    _, value, rest = parse_packet(packet)
+    assert value == 7
+
+    packet = hex_to_binary("CE00C43D881120")
+    _, value, rest = parse_packet(packet)
+    assert value == 9
+
+    packet = hex_to_binary("D8005AC2A8F0")
+    _, value, rest = parse_packet(packet)
+    assert value == 1
+
+    packet = hex_to_binary("F600BC2D8F")
+    _, value, rest = parse_packet(packet)
+    assert value == 0
+
+    packet = hex_to_binary("9C005AC2F8F0")
+    _, value, rest = parse_packet(packet)
+    assert value == 0
+
+    packet = hex_to_binary("9C0141080250320F1802104A08")
+    _, value, rest = parse_packet(packet)
+    assert value == 1
 
 
 if __name__ == "__main__":
     with open("input.txt") as file:
         input = file.read().strip()
     packet = hex_to_binary(input)
-    version_sum, rest = parse_packet(packet)
+    version_sum, value, rest = parse_packet(packet)
     print("Part1: ", version_sum)
+    print("Part2: ", value)
