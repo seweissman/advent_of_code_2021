@@ -194,6 +194,14 @@ if __name__ == "__main__":
     # x and y are independent so we only need to determine the max y velocity that will land in the
     # given range (-75, -49). Since the first y value after y passes through 0 is -v0 - 1, the max v0
     # is 74. The max height is v0 + v0 - 1 + v0 - 2 + ... + 1 = v0*(v0+1)/2. 74*75/2 = 2775
+    
+    # This doesn't quite work because this function isn't continuous
+    # y(t) = v0 + v0 - 1 + v0 - 2 + ... + v0 - t
+    #      = v0*(t + 1) - (1 + 2 + ... + t)
+    #      = v0*(t + 1) - t*(t + 1)/2
+    #      = v0*t + v0 - t^2/2 - t/2
+    # dy/dt = v0 - t - 1/2
+    # solve for dy/dt = 0 => # t = v0 - 1/2
 
     # Part 2 input
     xrange=(241, 275)
