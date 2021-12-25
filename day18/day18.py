@@ -191,11 +191,10 @@ def explode(l, d=0):
     if isinstance(l[0], int) and isinstance(l[1], int) and d == 4:
         return 0, True, l[0], l[1]
     exploded_l, is_exploded, left_explode_val, right_explode_val = explode(l[0], d=d+1)
-    if is_exploded:
-        if right_explode_val:
-            return [exploded_l, add_to_leftmost(l[1], right_explode_val)], True, left_explode_val, None
-        else:
-            return [exploded_l, l[1]], True, left_explode_val, right_explode_val
+    if right_explode_val:
+        return [exploded_l, add_to_leftmost(l[1], right_explode_val)], True, left_explode_val, None
+    else:
+        return [exploded_l, l[1]], True, left_explode_val, right_explode_val
     exploded_r, is_exploded, left_explode_val, right_explode_val = explode(l[1], d=d+1)
     if left_explode_val:
         return [add_to_rightmost(l[0], left_explode_val), exploded_r], is_exploded, None, right_explode_val
