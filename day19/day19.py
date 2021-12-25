@@ -1,8 +1,8 @@
 import numpy as np
+import math
+from collections import defaultdict
 
-def rotate(points, origin, angle):
-    return (points - origin) * np.exp(complex(0, angle)) + origin
-
+# Rotation matrices
 rx = np.array([[1, 0, 0 ],
               [0, 0, -1],
               [0, 1, 0]])
@@ -161,8 +161,6 @@ def read_points(section_raw):
     points = [[int(v) for v in line.split(",")] for line in section_raw.splitlines()[1:]]
     return points
 
-import math
-
 def point_distances(i,points, dist_map):
     for pt1 in points:
         dists = set()
@@ -172,12 +170,8 @@ def point_distances(i,points, dist_map):
                 dists.add(dist)
         dist_map[tuple([i] + pt1)] = dists
 
-from collections import defaultdict
-
-
 def test_sample():
     section_points = read_input(SAMPLE_INPUT_RAW)
-    #print("Section points:", section_points)
     relative_locations = []
     for i in range(len(section_points)):
         points0 = section_points[i]
@@ -199,8 +193,14 @@ def test_sample():
                     assert np.array_equal(pti[1:], rotate_and_translate(np.array(ptj[1:]), offset, rotation))
                     assert np.array_equal(ptj[1:], unrotate_and_translate(np.array(pti[1:]), offset, rotation))
 
-    print(relative_locations)
-    find_locations_relative_to_zero(relative_locations, len(section_points))
+    sector_locations = find_locations_relative_to_zero(relative_locations, len(section_points))
+    distances = []
+    for i in range(len(sector_locations)):
+        seci = sector_locations[i][1]
+        for j in range(i+1, len(sector_locations)):
+            secj = sector_locations[j][1]
+            distances.append(taxi_distance(seci, secj))
+    assert max(distances) == 3621
 
 
 def find_orientation(shared_points):
@@ -213,7 +213,6 @@ def find_orientation(shared_points):
                 point_offsets_set = {tuple(pt) for pt in point_offsets}
                 if len(point_offsets_set) == 1:
                     return point_offsets[0], np.array([nrx,  nry, nrz])
-                #print(len()
 
 def test_rotate_point():
     for nrx in range(4):
@@ -230,9 +229,8 @@ def test_undo_rotation():
     assert np.array_equal(pt, old_pt.astype(int))
     
 def find_locations_relative_to_zero(relative_locations, n):
+    paths = []
     for i in range(1,n):
-        # if i == 2:
-        #     import pdb; pdb.set_trace()
         seen = set()
         loc = np.array([0, 0, 0])
         pt = i
@@ -241,7 +239,7 @@ def find_locations_relative_to_zero(relative_locations, n):
             #print("Stack", i, stack)
             pt, loc = stack.pop()
             if pt == 0:
-                print("Found path: ", i, loc)
+                paths.append([i, loc])
                 break
             seen.add(pt)
             for pti, ptj, offset, rotations in relative_locations:
@@ -249,6 +247,7 @@ def find_locations_relative_to_zero(relative_locations, n):
                     stack.append([ptj, unrotate_and_translate(loc, offset, rotations)])
                 if ptj == pt and pti not in seen:
                     stack.append([pti, rotate_and_translate(loc, offset, rotations)])
+    return paths
 
 
 def connected_components(point_map):
@@ -267,38 +266,11 @@ def connected_components(point_map):
             for other_point in point_map[pt]:
                 points_to_check.append(other_point)
             component = component.union(point_map[pt])
-            #print(points_to_check)
             del point_map[pt]
         ct += 1
-        #print(len(component))
         components.append(component)
     print("Component ct", ct)
-    #print("Components:", components)
     return components
-
-from heapq import heappush, heappop
-
-def shortest_path(n_points, distances):
-    costs = {}
-    for i in range(n_points):
-        for j in range(i+1, n_points):
-            #if i == 20 and j == 21:
-            #    import pdb; pdb.set_trace()
-            q = []
-            heappush(q, (0, i))
-            seen = set()
-            while q:
-                cost, k = heappop(q)
-                seen.add(k)
-                if k == j:
-                    costs[(i,j)] = cost
-                    break
-                for p in distances:
-                    if p[0] == k and p[1] not in seen:
-                        heappush(q, (cost + distances[p], p[1]))
-                    if p[1] == k and p[0] not in seen:
-                        heappush(q, (cost + distances[p], p[0]))
-    return costs
 
 def rotate_and_translate(pt, offset, rotation):
     dx, dy, dz = offset
@@ -320,11 +292,15 @@ def unrotate_and_translate(pt, offset, rotation):
     pt_rotated = zmat.dot(ymat.dot(xmat.dot(pt_translated)))
     return pt_rotated
 
+def taxi_distance(pt1, pt2):
+    return abs(pt1[0] - pt2[0]) + abs(pt1[1] - pt2[1]) + abs(pt1[2] - pt2[2])
 
 if __name__ == "__main__":
     with open("input.txt") as file:
         section_points = read_input(file.read())
-    #print(section_points)
+
+
+
     point_dists_map = {}
     point_map = defaultdict(set)
     for i in range(len(section_points)):
@@ -341,30 +317,40 @@ if __name__ == "__main__":
                     point_map[pt0].add(pt1)
                     point_map[pt1].add(pt0)
     components = connected_components(point_map)
-    # for component in components:
-    #     for p1 in component:
-    #         for p2 in component:
-    #             if p1 != p2:
-    #                 print(p1, p2, abs(p1[1]) + abs(p1[2]) + abs(p1[3]) + abs(p2[1]) + abs(p2[2]) + abs(p2[3]))
-    #     if len(component) > 1:
-    #         print("\n\n")
     print("Part 1:", len(components))
-    taxi_distances = defaultdict(set)
-    for component in components:
-        for p1 in component:
-            for p2 in component:
-                if p1 != p2:
-                    d = abs(p1[1]) + abs(p1[2]) + abs(p1[3]) + abs(p2[1]) + abs(p2[2]) + abs(p2[3])
-                    taxi_distances[tuple(sorted([p1[0],p2[0]]))].add(d)
-    farthest_scanners = max([min(distance_set) for distance_set in taxi_distances.values()])
-    distances = {}
-    for pair, distance_set in taxi_distances.items():
-        print(pair, min(distance_set))
-        distances[pair] = min(distance_set)
-        #print(pair, min(distance_set))
-    costs = shortest_path(len(points), distances)
-    print("Costs:", costs)
-    print("Part 2:", max(costs.values()))
+
+    #sector_locations.append((0, np.array([0,0,0])))
+
+    relative_locations = []
+    for i in range(len(section_points)):
+        points0 = section_points[i]
+        point_dists0 = {}
+        point_distances(i,points0, point_dists0)
+        for j in range(i+1, len(section_points)):
+            points1 = section_points[j]
+            point_dists1 = {}
+            point_distances(j,points1, point_dists1)
+            shared_points = []
+            for pt0 in point_dists0:
+                for pt1 in point_dists1:
+                    if len(point_dists0[pt0].intersection(point_dists1[pt1])) >= 11:
+                        shared_points.append((pt0, pt1))
+            if shared_points:
+                offset, rotation = find_orientation(shared_points)
+                relative_locations.append((i,j,offset,rotation))
+                for pti, ptj in shared_points:
+                    assert np.array_equal(pti[1:], rotate_and_translate(np.array(ptj[1:]), offset, rotation))
+                    assert np.array_equal(ptj[1:], unrotate_and_translate(np.array(pti[1:]), offset, rotation))
+
+    sector_locations = find_locations_relative_to_zero(relative_locations, len(section_points))
+
+    distances = []
+    for i in range(len(sector_locations)):
+        seci = sector_locations[i][1]
+        for j in range(i+1, len(sector_locations)):
+            secj = sector_locations[j][1]
+            distances.append(taxi_distance(seci, secj))
+    print("Part 2:", max(distances))
 
 
 
