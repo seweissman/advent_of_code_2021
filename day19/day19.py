@@ -207,7 +207,6 @@ def test_sample():
     section_points = read_input(SAMPLE_INPUT_RAW)
     #print("Section points:", section_points)
     relative_locations = []
-    all_shared_points = {}
     for i in range(len(section_points)):
         points0 = section_points[i]
         point_dists0 = {}
@@ -216,55 +215,33 @@ def test_sample():
             points1 = section_points[j]
             point_dists1 = {}
             point_distances(j,points1, point_dists1)
-            #print(point_dists0, point_dists1)
             shared_points = []
             for pt0 in point_dists0:
                 for pt1 in point_dists1:
                     if len(point_dists0[pt0].intersection(point_dists1[pt1])) >= 11:
                         shared_points.append((pt0, pt1))
-            
-            print(i,j,"shared points", shared_points)
-            if len(shared_points) >= 4:
-                distances = []
-                for pt0, pt1 in shared_points[:4]:
-                    distance = [pt0[1], pt0[2], pt0[3], math.sqrt(pt1[1]**2 + pt1[2]**2 + pt1[3]**2)]
-                    distances.append(distance)
-                offset = trilaterate3D(distances)
-                # for pt0, pt1 in shared_points[4:8]:
-                #     distance = [pt0[1], pt0[2], pt0[3], math.sqrt(pt1[1]**2 + pt1[2]**2 + pt1[3]**2)]
-                #     distances.append(distance)
-                # offset = trilaterate3D(distances)
-                offset = np.array([int(v) for v in offset])
-                print(f"location of sensor {j} relative to {i}: {offset}")
-                relative_locations.append([i,j,offset])
-            all_shared_points[(i,j)] = shared_points
-            
-    print("Relative locations:", relative_locations)
-    relative_locations_and_orientations = []
-    for i, j, offset in relative_locations:
-        c = 0
-        rotations = None
-        while not rotations:
-            pti, ptj = all_shared_points[(i,j)][c]
-            print(i,j,offset,pti,ptj)
-            rotations = find_orientation(ptj[1:], pti[1:], offset)
-            c += 1
-        relative_locations_and_orientations.append([i,j,offset,np.array(rotations)])
-    print("Rotations:", i,j,rotations)
+            if shared_points:
+                offset, rotation = find_orientation(shared_points)
+                relative_locations.append((i,j,offset,rotation))
+                for pti, ptj in shared_points:
+                    assert np.array_equal(pti[1:], rotate_and_translate(np.array(ptj[1:]), offset, rotation))
+                    assert np.array_equal(ptj[1:], unrotate_and_translate(np.array(pti[1:]), offset, rotation))
 
-    find_locations_relative_to_zero(relative_locations_and_orientations, len(section_points))
+    print(relative_locations)
+    find_locations_relative_to_zero(relative_locations, len(section_points))
 
 
-def find_orientation(pt, check_pt, offset):
+def find_orientation(shared_points):
+    """For some rotation, all shared points between scanner i and scanner j will have the same offset"""
     for nrx in range(4):
         for nry in range(4):
             for nrz in range(4):
-                new_pt = rotate_and_translate(pt, offset, (nrx, nry, nrz))
-                #print("Rotated and translated:", pt, "by", offset[0], offset[1], offset[2],
-                      #nrx, nry, nrz, "==", new_pt)
-                if -1 <= new_pt[0] - check_pt[0] <= 1 and -1 <= new_pt[1] - check_pt[1] <= 1 and -1 <= new_pt[2] - check_pt[2] <= 1:
-                #if np.array_equal(new_pt, check_pt):
-                    return (nrx, nry, nrz)
+                point_offsets = [(pt1[1:] - rotate_and_translate(pt2[1:], np.array([0,0,0]), (nrx, nry, nrz))) 
+                                    for (pt1,pt2) in shared_points]
+                point_offsets_set = {tuple(pt) for pt in point_offsets}
+                if len(point_offsets_set) == 1:
+                    return point_offsets[0], np.array([nrx,  nry, nrz])
+                #print(len()
 
 def test_rotate_point():
     for nrx in range(4):
@@ -272,36 +249,20 @@ def test_rotate_point():
             for nrz in range(4):
                 new_pt = rotate_and_translate([-336, 658, 858], (68, -1246, -43), (nrx, nry, nrz)) 
                 if (list(new_pt) == [404, -588, -901]):
-                    print("Rotations:", nrx, nry, nrz)
-                #print(new_pt)
+                    assert (nrx,nry,nrz) in [(2,0,2), (0,2,0)]
 
-# ((0, 404, -588, -901), (1, -336, 658, 858))  are the same point
-# 1 is [   68. -1246.   -43.] from 0
-#-336 - 68
-#658 + 1246
-#-1 * -901 + 43
-
-# day19.py location of sensor 1 relative to 0: [   68. -1246.   -43.]
-# location of sensor 3 relative to 1: [  160. -1134.   -23.]
-# location of sensor 4 relative to 1: [   88.   113. -1104.]
-# location of sensor 4 relative to 2: [1125. -168.   72.]
-        
-
-
-# 0       
-#                     4: 88, 113
-            
-#         1: 68, -1246
-
-# 4 relative to 0 is  [   68. -1246.   -43.] + [   -88.   113. +1104.] = -20,-1133,1061
-# 2 relative to 0 is [1125. -168.   72.] + -20,-1133,1061
+def test_undo_rotation():
+    pt = [-336, 658, 858]
+    new_pt = rotate_and_translate(pt,[0,0,0],[1,2,3])
+    old_pt = unrotate_and_translate(new_pt, [0,0,0], [1,2,3])
+    assert np.array_equal(pt, old_pt.astype(int))
     
-def find_locations_relative_to_zero(relative_locations_and_orientations, n):
+def find_locations_relative_to_zero(relative_locations, n):
     for i in range(1,n):
-        if i == 2:
-            import pdb; pdb.set_trace()
+        # if i == 2:
+        #     import pdb; pdb.set_trace()
         seen = set()
-        loc = [0, 0, 0]
+        loc = np.array([0, 0, 0])
         pt = i
         stack = [[pt, loc]]
         while stack:
@@ -311,9 +272,9 @@ def find_locations_relative_to_zero(relative_locations_and_orientations, n):
                 print("Found path: ", i, loc)
                 break
             seen.add(pt)
-            for pti, ptj, offset, rotations in relative_locations_and_orientations:
+            for pti, ptj, offset, rotations in relative_locations:
                 if pti == pt and ptj not in seen:
-                    stack.append([ptj, rotate_and_translate(loc, -1*offset, -1*rotations)])
+                    stack.append([ptj, unrotate_and_translate(loc, offset, rotations)])
                 if ptj == pt and pti not in seen:
                     stack.append([pti, rotate_and_translate(loc, offset, rotations)])
 
@@ -367,19 +328,26 @@ def shortest_path(n_points, distances):
                         heappush(q, (cost + distances[p], p[0]))
     return costs
 
-
-
 def rotate_and_translate(pt, offset, rotation):
     dx, dy, dz = offset
     nrx, nry, nrz = rotation
-    nrx = nrx % 4
-    nry = nry % 4
-    nrz = nrz % 4
     xmat = np.linalg.matrix_power(rx, nrx)
     ymat = np.linalg.matrix_power(ry, nry)
     zmat = np.linalg.matrix_power(rz, nrz)
     pt_rotated = xmat.dot(ymat.dot(zmat.dot(pt)))
     return pt_rotated + [dx, dy, dz]
+
+def unrotate_and_translate(pt, offset, rotation):
+    dx, dy, dz = offset
+    nrx, nry, nrz = rotation
+    pt_translated = pt - [dx, dy, dz]
+
+    xmat = np.linalg.matrix_power(rx, -nrx)
+    ymat = np.linalg.matrix_power(ry, -nry)
+    zmat = np.linalg.matrix_power(rz, -nrz)
+    pt_rotated = zmat.dot(ymat.dot(xmat.dot(pt_translated)))
+    return pt_rotated
+
 
 if __name__ == "__main__":
     with open("input.txt") as file:
