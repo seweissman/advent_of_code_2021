@@ -166,7 +166,7 @@ def point_distances(i,points, dist_map):
         dists = set()
         for pt2 in points:
             if pt1 != pt2:      
-                dist = math.sqrt((pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2 + (pt1[2] - pt2[2])**2)
+                dist = taxi_distance(pt1, pt2)
                 dists.add(dist)
         dist_map[tuple([i] + pt1)] = dists
 
@@ -192,7 +192,7 @@ def test_sample():
                 for pti, ptj in shared_points:
                     assert np.array_equal(pti[1:], rotate_and_translate(np.array(ptj[1:]), offset, rotation))
                     assert np.array_equal(ptj[1:], unrotate_and_translate(np.array(pti[1:]), offset, rotation))
-
+    
     sector_locations = find_locations_relative_to_zero(relative_locations, len(section_points))
     distances = []
     for i in range(len(sector_locations)):
@@ -204,7 +204,10 @@ def test_sample():
 
 
 def find_orientation(shared_points):
-    """For some rotation, all shared points between scanner i and scanner j will have the same offset"""
+    """
+    For some rotation, all shared points between scanner i and scanner j will have the same offset.
+    Return this rotation and offset
+    """
     for nrx in range(4):
         for nry in range(4):
             for nrz in range(4):
@@ -229,6 +232,7 @@ def test_undo_rotation():
     assert np.array_equal(pt, old_pt.astype(int))
     
 def find_locations_relative_to_zero(relative_locations, n):
+    """Find a series of transformations to translate each sector to zero"""
     paths = []
     for i in range(1,n):
         seen = set()
@@ -236,7 +240,6 @@ def find_locations_relative_to_zero(relative_locations, n):
         pt = i
         stack = [[pt, loc]]
         while stack:
-            #print("Stack", i, stack)
             pt, loc = stack.pop()
             if pt == 0:
                 paths.append([i, loc])
@@ -248,7 +251,6 @@ def find_locations_relative_to_zero(relative_locations, n):
                 if ptj == pt and pti not in seen:
                     stack.append([pti, rotate_and_translate(loc, offset, rotations)])
     return paths
-
 
 def connected_components(point_map):
     components = []
@@ -299,27 +301,22 @@ if __name__ == "__main__":
     with open("input.txt") as file:
         section_points = read_input(file.read())
 
-
-
     point_dists_map = {}
     point_map = defaultdict(set)
     for i in range(len(section_points)):
         points = section_points[i]
         point_distances(i,points, point_dists_map)
-    #print(point_dists_map)
     for pt0, pt0_dists in point_dists_map.items():
         for pt1, pt1_dists in point_dists_map.items():
             if pt0 != pt1:
                 point_map[pt0]
                 point_map[pt1]
                 if len(pt1_dists.intersection(pt0_dists)) > 3:
-                    # print(pt0, pt1, len(pt1_dists.intersection(pt0_dists)))
                     point_map[pt0].add(pt1)
                     point_map[pt1].add(pt0)
+    # Find point equivalence classes to find unique points
     components = connected_components(point_map)
     print("Part 1:", len(components))
-
-    #sector_locations.append((0, np.array([0,0,0])))
 
     relative_locations = []
     for i in range(len(section_points)):
@@ -331,19 +328,22 @@ if __name__ == "__main__":
             point_dists1 = {}
             point_distances(j,points1, point_dists1)
             shared_points = []
+            # We can identify shared points between sectors using their relative distances.
+            # Points that are shared between clusters will have the same relative distances to
+            # 12 other points in the cluster.
             for pt0 in point_dists0:
                 for pt1 in point_dists1:
                     if len(point_dists0[pt0].intersection(point_dists1[pt1])) >= 11:
                         shared_points.append((pt0, pt1))
+            
             if shared_points:
                 offset, rotation = find_orientation(shared_points)
                 relative_locations.append((i,j,offset,rotation))
-                for pti, ptj in shared_points:
-                    assert np.array_equal(pti[1:], rotate_and_translate(np.array(ptj[1:]), offset, rotation))
-                    assert np.array_equal(ptj[1:], unrotate_and_translate(np.array(pti[1:]), offset, rotation))
 
+    # Map sectors to their locations relative to sector 0
     sector_locations = find_locations_relative_to_zero(relative_locations, len(section_points))
 
+    # Find the largest taxi distance between any two sensors
     distances = []
     for i in range(len(sector_locations)):
         seci = sector_locations[i][1]
