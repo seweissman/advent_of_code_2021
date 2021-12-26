@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from collections import defaultdict
 
 # Rotation matrices
@@ -314,7 +313,7 @@ if __name__ == "__main__":
                 if len(pt1_dists.intersection(pt0_dists)) > 3:
                     point_map[pt0].add(pt1)
                     point_map[pt1].add(pt0)
-    # Find point equivalence classes to find unique points
+    # Find point equivalence classes to find unique points.
     components = connected_components(point_map)
     print("Part 1:", len(components))
 
