@@ -35,10 +35,10 @@ def test_sample():
     assert result == 739785
 
     n_paths_to_win1, n_paths_to_win2, win1_states, win2_states, all_states_p1, all_states_p2, end_states_p1, end_states_p2 \
-        = find_paths_to_end(4, 8, 10)
+        = find_paths_to_end(4, 8, 20)
 
     n_paths_to_win1_ex, n_paths_to_win2_ex, win1_states_ex, win2_states_ex, all_states_p1_ex, all_states_p2_ex, end_states_p1_ex, end_states_p2_ex \
-        = find_paths_to_end_exhaust(4, 8, 10)
+        = find_paths_to_end_exhaust(4, 8, 20)
 
     # Round 1
     # 4,0
@@ -244,31 +244,56 @@ def find_paths_to_end(start1, start2, winning_score):
         seen = seen.union(new_states)
 
     paths_to_end2 = defaultdict(int)
-    states = []
+    states = set()
     for state in win2_states:
-        states.append(state)
+        states.add(state)
         paths_to_end2[state] = 1
 
     seen = set()
     while states:
-        p1_state, p2_state, round = states.pop()
-        loc1, score1 = p1_state
-        loc2, score2 = p2_state
-        seen.add((p1_state, p2_state, round))
-        if round == 0 or ((loc1, score1, round) not in all_states_p1) or ((loc2, score2, round) not in all_states_p2):
-            continue
-        prev_round = round - 1
-        for roll1, mult1 in TWO_ROLLS:
-            prev_loc1 = (loc1 - roll1) % 10
-            prev_score1 = score1 - (loc1 + 1)
-            for roll2, mult2 in TWO_ROLLS:
-                prev_loc2 = (loc2 - roll2) % 10
-                prev_score2 = score2 - (loc2 + 1)
-                assert paths_to_end2[(p1_state, p2_state, round)] != 0
-                paths_to_end2[((prev_loc1, prev_score1), (prev_loc2, prev_score2), prev_round)] += mult1*mult2*paths_to_end2[(p1_state, p2_state, round)]
-                new_state = ((prev_loc1, prev_score1),(prev_loc2, prev_score2), prev_round)
-                if new_state not in seen:
-                    states.append(new_state)
+        print("\n\nIteration:")
+        print("Paths to end: ", paths_to_end2[((3, 0), (7, 0), 0)])
+        new_states = set()
+        for state in states:
+            p1_state, p2_state, round = state
+            loc1, score1 = p1_state
+            loc2, score2 = p2_state
+            if round == 0 or ((loc1, score1, round) not in all_states_p1) or ((loc2, score2, round) not in all_states_p2):
+                continue
+            #print(state)
+            prev_round = round - 1
+            for roll1, mult1 in TWO_ROLLS:
+                prev_loc1 = (loc1 - roll1) % 10
+                prev_score1 = score1 - (loc1 + 1)
+                for roll2, mult2 in TWO_ROLLS:
+                    prev_loc2 = (loc2 - roll2) % 10
+                    prev_score2 = score2 - (loc2 + 1)
+                    new_state = ((prev_loc1, prev_score1),(prev_loc2, prev_score2), prev_round)
+                    new_states.add(new_state)
+        #print("New states:", new_states)
+        for new_state1, new_state2, new_round in sorted(new_states, key=lambda s: -1*s[2]):
+            if (new_state1, new_state2, new_round) in seen:
+                continue
+            new_loc1, new_score1 = new_state1
+            new_loc2, new_score2 = new_state2
+            for roll1, mult1 in TWO_ROLLS:
+                loc1 = (new_loc1 + roll1) % 10
+                score1 = new_score1 + (loc1 + 1)
+                for roll2, mult2 in TWO_ROLLS:
+                    loc2 = (new_loc2 + roll2) % 10
+                    score2 = new_score2 + (loc2 + 1)
+                    if (
+                        (((new_loc1, new_score1), new_round) == ((3, 0), 0) and ((new_loc2, new_score2), new_round) == ((7, 0), 0)) or
+                        (((new_loc1, new_score1), new_round) == ((5, 6), 1) and ((new_loc2, new_score2), new_round) == ((1, 2), 1)) 
+                        ):
+                        amount_to_add = mult1*mult2*paths_to_end1[((loc1, score1), (loc2, score2), new_round + 1)]
+                        #print("loc1", "loc2", new_loc1, new_loc2, loc1, score1, loc2, score2, roll1, roll2, "Adding: ", amount_to_add)
+                        #print("Adding:", amount_to_add)
+
+                    paths_to_end2[((new_loc1, new_score1), (new_loc2, new_score2), new_round)] += mult1*mult2*paths_to_end2[((loc1, score1), (loc2, score2), new_round + 1)]
+
+        states = new_states
+        seen = seen.union(new_states)
 
     # for p1_state, p2_state, round in paths_to_end:
     #     if round == 0:
