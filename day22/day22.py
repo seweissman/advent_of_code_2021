@@ -232,7 +232,7 @@ def volume(cube_range, limit_range=None):
 def run_steps(reboot_steps):
     cube_list = [reboot_steps[0][1]]
     for state, new_cube in reboot_steps[1:]:
-        print(state, new_cube) #, cube_list)
+        print(state, new_cube)
         cube_list_new = []
         if state == "on":
             cube_list_new += cube_list
@@ -242,7 +242,6 @@ def run_steps(reboot_steps):
                 for union_cube in cube_union_list:
                     if overlap(union_cube, cube):
                         cube_remainders = cube_diff(union_cube, cube)
-                        #print("remainders:", cube_remainders)
                         new_cube_union_list += cube_remainders
                     else:
                         new_cube_union_list.append(union_cube)
