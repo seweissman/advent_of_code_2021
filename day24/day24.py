@@ -1,10 +1,11 @@
 
-SAMPLE_INSTRUCTIONS="""inp w
+
+SAMPLE_INSTRUCTIONS_14="""inp w
 mul x 0
 add x z
 mod x 26
-div z 1
-add x 10
+div z 26
+add x -1
 eql x w
 eql x 0
 mul y 0
@@ -14,27 +15,59 @@ add y 1
 mul z y
 mul y 0
 add y w
-add y 0
-mul y x
-add z y
-inp w
-mul x 0
-add x z
-mod x 26
-div z 1
-add x 12
-eql x w
-eql x 0
-mul y 0
-add y 25
-mul y x
-add y 1
-mul z y
-mul y 0
-add y w
-add y 6
+add y 5
 mul y x
 add z y"""
+
+SAMPLE_INSTRUCTIONS_13="""inp w
+mul x 0
+add x z
+mod x 26
+div z 26
+add x -1
+eql x w
+eql x 0
+mul y 0
+add y 25
+mul y x
+add y 1
+mul z y
+mul y 0
+add y w
+add y 15
+mul y x
+add z y"""
+
+SAMPLE_INSTRUCTIONS_12 = """inp w
+mul x 0
+add x z
+mod x 26
+div z 26
+add x -4
+eql x w
+eql x 0
+mul y 0
+add y 25
+mul y x
+add y 1
+mul z y
+mul y 0
+add y w
+add y 9
+mul y x
+add z y
+"""
+
+def test_sample():
+    instructions = SAMPLE_INSTRUCTIONS_12.splitlines()
+    state = run_instructions(instructions, [0,"x","y","z"])
+    z_state = state[3]
+    print(z_state.size())
+    print(z_state)
+    simplify_tree(z_state)
+    print(z_state.size())
+    print(z_state)
+
 
 # inp a - Read an input value and write it to variable a.
 # add a b - Add the value of a to the value of b, then store the result in variable a.
@@ -74,15 +107,6 @@ class Operation:
             new_arg2 = self.arg2
         return Operation(self.op, new_arg1, new_arg2)
 
-def test_sample():
-    instructions = SAMPLE_INSTRUCTIONS.splitlines()
-    state = run_instructions(instructions)
-    z_state = state[3]
-    print(z_state.size())
-    print(z_state)
-    simplify_tree(z_state)
-    print(z_state.size())
-    print(z_state)
 VARS = ["w","x","y","z"]
 
 def simplify_tree(op_tree, w_vals=None):    
@@ -219,19 +243,13 @@ def tree_equal(op_tree1, op_tree2):
     return tree_equal(op_tree1.arg1, op_tree2.arg1) and tree_equal(op_tree1.arg2, op_tree2.arg2)
 
 
-def run_instructions(instructions):
-    # w x y z
-    state = [0,0,0,0]
-    input_idx = 1
-    #import pdb; pdb.set_trace()
+def run_instructions(instructions, state=(0,0,0,0), input_idx_start=1):
+    state = list(state)
+    input_idx = input_idx_start
     for instruction in instructions:
-        # if instruction == "add x 10":
-        #     import pdb; pdb.set_trace()
         op,*args = instruction.split(" ")
-        #print(op,*args)
         if op == "inp":
             arg1 = "w" + str(input_idx)
-            #print("input variable", arg1)
             state[0] = arg1
             input_idx += 1
         else:
@@ -288,28 +306,110 @@ def run_instructions(instructions):
                     state[idx1] = 0
                 elif isinstance(val1, Operation) or isinstance(val2, Operation) or isinstance(val1, str) or isinstance(val2, str):
                     state[idx1] = Operation("eql", val1, val2)
-                # elif isinstance(val1, str) and val1.startswith("w") and isinstance(val2, int) and val2 > 9:
-                #     state[idx1] = 0
-                # elif isinstance(val2, str) and val2.startswith("w") and isinstance(val1, int) and val1 > 9:
-                #     state[idx1] = 0
-                # elif isinstance(val1, str) and val1 in ["(w1 + 12)","((((w1 * 25) + (w2 + 6)) % 26) + 13)","((((((w1 * 25) + (w2 + 6)) * 25) + (w3 + 4)) % 26) + 13)"] and isinstance(val2, str) and val2.startswith("w"):
-                #     state[idx1] = 0
-                
-        #state = [simplify_tree(s) for s in state]
     return state
 
 if __name__ == "__main__":
     with open("input.txt") as file:
         instructions = file.read().splitlines()
+
+    w_vals="94992994195998"
+    instructions_block = [instructions[0]]
+    block_ct = 1
+    #import pdb; pdb.set_trace()
+    state = (0,0,0,0)
+    for i in range(1,len(instructions)):
+        if instructions[i].startswith("inp"):
+            state = run_instructions(instructions_block, state=state, input_idx_start=block_ct)
+            print(state[3])
+            state = [simplify_tree(s, w_vals=w_vals) for s in state]
+            print(f"z{block_ct}=",state[3])
+            print("\n")
+            instructions_block = []
+            block_ct += 1
+        instructions_block.append(instructions[i])
+    state = run_instructions(instructions_block, state=state, input_idx_start=block_ct)
+    print(state[3])
+    state = [simplify_tree(s, w_vals=w_vals) for s in state]
+    print(f"z{block_ct}=",state[3])
+    
     state = run_instructions(instructions)
     state_z = state[3]
-    #print(state_z.size())
-    state_z = simplify_tree(state_z)
-    #        ..............
-    input = "11111111486571"
-    state_z = simplify_tree(state_z, input)
-    if isinstance(state_z, int):
-        print(input, state_z)
-    else:
-        print(state_z.size())
+    val = simplify_tree(state_z, w_vals="94992994195998")
+    print("Part 1 is it 0?", val)
 
+    state = run_instructions(instructions)
+    state_z = state[3]
+    val = simplify_tree(state_z, w_vals="21191861151161")
+    print("Part2 is it 0?", val)
+
+
+"""
+z1= w1
+z2= add(mul('w1',        add(mul(25,eql(eql(add(w1,12),'w2'),0)),1)),mul(add('w2',6),eql(eql(add(w1,12),'w2'),0)))
+    if w2 = w1 + 12:  NOT POSSIBLE
+        z2 = w1
+    if w2 != w1 + 12:
+        z2 = 26*w1 + w2 + 6
+z3= add(mul('z2',        add(mul(25,eql(eql(add(mod('z2',26),13),'w3'),0)),1)),mul(add('w3',4),eql(eql(add(mod('z2',26),13),'w3'),0)))
+    if w3 = mod(z2, 26) + 13: NOT POSSIBLE
+        z3 = z2
+    if w3 != mod(z2, 26) + 13:
+        z3 = 26*z2 + w3 + 4
+z4= add(mul('z3',        add(mul(25,eql(eql(add(mod('z3',26),13),'w4'),0)),1)),mul(add('w4',2),eql(eql(add(mod('z3',26),13),'w4'),0)))
+    if w4 = mod(z3, 26) + 13: NOT POSSIBLE
+        z4 = z6
+    if w4 != mod(z3, 26) + 13:
+        z4 = 26*z3 + w4 + 2
+z5= add(mul('z4',        add(mul(25,eql(eql(add(mod('z4',26),14),'w5'),0)),1)),mul(add('w5',9),eql(eql(add(mod('z4',26),14),'w5'),0)))
+    if w5 = mod(z4, 26) + 14: NOT POSSIBLE
+        z5 = z4
+    if w5 != mod(z4, 26) + 14:
+        z5 = 26*z4 + w5 + 9
+z6= add(mul(div('z5',26),add(mul(25,eql(eql(add(mod('z5',26),-2),'w6'),0)),1)),mul(add('w6',1),eql(eql(add(mod('z5',26),-2),'w6'),0)))
+    if w6 = mod(z5, 26) - 2:
+        z6 = div(z5,26)
+    if w6 != mod(z5, 26) - 2:
+        z6 = z5 + w6 + 1
+z7= add(mul('z6',        add(mul(25,eql(eql(add(mod('z6',26),11),'w7'),0)),1)),mul(add('w7',10),eql(eql(add(mod('z6',26),11),'w7'),0)))
+    if w7 = mod(z6, 26) + 11: IMPOSSIBLE
+        z7 = z6
+    if w7 != mod(z8, 26) + 11:
+        z7 = 26*z6 + w7 + 10
+z8= add(mul(div('z7',26),add(mul(25,eql(eql(add(mod('z7',26),-15),'w8'),0)),1)),mul(add('w8',6),eql(eql(add(mod('z7',26),-15),'w8'),0)))
+    if w8 = mod(z7, 26) - 15:
+        z8 = div(z7,26)
+    if w8 != mod(z8, 26) - 15:
+        z8 = z7 + w8 + 6
+z9= add(mul(div('z8',26),add(mul(25,eql(eql(add(mod('z8',26),-10),'w9'),0)),1)),mul(add('w9',4),eql(eql(add(mod('z8',26),-10),'w9'),0)))
+    if w9 = mod(z8, 26) - 10:
+        z9 = div(z8,26)
+    if w9 != mod(z8, 26) - 10:
+        z9 = z8 + w9 + 4
+z10= add(mul('z9',add(mul(25,eql(eql(add(mod('z9',26),10),'w10'),0)),1)),mul(add('w10',6),eql(eql(add(mod('z9',26),10),'w10'),0)))
+    if w10 = mod(z9, 26) + 10:
+        z10 = z9
+    if w10 != mod(z9, 26) + 10:
+        z10 = 26*z9 + w10 + 6
+z11= add(mul(div('z10',26),add(mul(25,eql(eql(add(mod('z10',26),-10),'w11'),0)),1)),mul(add('w11',3),eql(eql(add(mod('z10',26),-10),'w11'),0)))
+    if w11 = mod(z10, 26) - 10:
+        z11 = div(z10,26)
+    if w11 != mod(z11, 26):
+        z11 = z10 + w11 + 3
+z12= add(mul(div('z11',26),add(mul(25,eql(eql(add(mod('z11',26),-4),'w12'),0)),1)),mul(add('w12',9),eql(eql(add(mod('z11',26),-4),'w12'),0)))
+    if w12 = mod(z11, 26) - 4:
+        z12 = div(z11,26)
+    if w12 != mod(z12, 26):
+        z12 = z11 + w12 + 9
+z13= add(mul(div('z12',26),add(mul(25,eql(eql(add(mod('z12',26),-1),'w13'),0)),1)),mul(add('w13',15),eql(eql(add(mod('z12',26),-1),'w13'),0)))
+    if w13 = mod(z12, 26) - 1:
+        z13 = div(z12,26)
+    if w13 != mod(z12, 26):
+        z13 = z12 + w13 + 15
+
+z14= add(mul(div('z13',26),add(mul(25,eql(eql(add(mod('z13',26),-1),'w14'),0)),1)),mul(add('w14',5),eql(eql(add(mod('z13',26),-1),'w14'),0)))
+    if w14 = mod(z13, 26) - 1:
+        z14 = div(z13,26) == 0
+    if w14 != mod(z13, 26):
+        z14 = z13 + w14 + 5 == 0
+
+"""
